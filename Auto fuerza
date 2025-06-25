@@ -1,37 +1,33 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
--- Config
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- ConfiguraciÃ³n
 local PET_NAME = "Swift Samurai"
 local ROCK_NAME = "Rock5M"
 local PROTEIN_EGG_NAME = "ProteinEgg"
+local BASE_REP_SPEED = 1000
+local SWIFT_SAMURAI_REP_SPEED = 2000
 local PROTEIN_EGG_INTERVAL = 30 * 60
-local ROCK_INTERVAL = 5
+local DOUBLE_REP_MULTIPLIER = 2
+local REPS_PER_STEP = 100 -- CuÃ¡ntos reps enviar por lote
+local STEP_DELAY = 0.1 -- Tiempo de espera entre lotes
 
-getgenv()._AutoRepFarmEnabled = not getgenv()._AutoRepFarmEnabled
-if not getgenv()._AutoRepFarmEnabled then
-    warn("[Auto Rep Farm] DESACTIVADO")
-    return
-else
-    warn("[Auto Rep Farm] ACTIVADO")
-end
-
-local HumanoidRootPart = nil
+-- Variables
 local hasSwiftSamurai = false
 local lastProteinEggTime = 0
-local lastRockTime = 0
+local isScriptEnabled = false
+local hasDoubleRepPass = true -- Simula el pase de doble rep
 
-local function updateCharacterRefs()
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    HumanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
-end
-
+-- Funciones
 local function equipPet()
     hasSwiftSamurai = false
-    local petsFolder = LocalPlayer:FindFirstChild("petsFolder")
-    if petsFolder and petsFolder:FindFirstChild("Unique") then
-        for _, pet in pairs(petsFolder.Unique:GetChildren()) do
+    if LocalPlayer:FindFirstChild("petsFolder") and LocalPlayer.petsFolder:FindFirstChild("Unique") then
+        for _, pet in pairs(LocalPlayer.petsFolder.Unique:GetChildren()) do
             if pet.Name == PET_NAME then
                 ReplicatedStorage.rEvents.equipPetEvent:FireServer("equipPet", pet)
                 hasSwiftSamurai = true
@@ -60,28 +56,62 @@ local function hitRock()
     end
 end
 
+local function doReps(repSpeed)
+    for i = 1, repSpeed, REPS_PER_STEP do
+        for _ = 1, math.min(REPS_PER_STEP, repSpeed - i + 1) do
+            if LocalPlayer:FindFirstChild("muscleEvent") then
+                LocalPlayer.muscleEvent:FireServer("rep")
+            end
+        end
+        task.wait(STEP_DELAY)
+    end
+end
+
+-- GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MuscleScriptGUI"
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 100, 0, 30)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.BackgroundColor3 = Color3.new(0.4, 0.4, 0.4)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.Text = "Iniciar"
+toggleButton.Parent = screenGui
+
+local function toggleScript()
+    isScriptEnabled = not isScriptEnabled
+    toggleButton.Text = isScriptEnabled and "Detener" or "Iniciar"
+end
+
+toggleButton.MouseButton1Click:Connect(toggleScript)
+
+-- Bucle principal
 task.spawn(function()
-    updateCharacterRefs()
     equipPet()
-    lastProteinEggTime = tick()
 
-    while getgenv()._AutoRepFarmEnabled do
-        if LocalPlayer:FindFirstChild("muscleEvent") then
-            LocalPlayer.muscleEvent:FireServer("rep")
+    while true do
+        if isScriptEnabled then
+            local repSpeed = SWIFT_SAMURAI_REP_SPEED
+
+            if hasDoubleRepPass then
+                repSpeed = repSpeed * DOUBLE_REP_MULTIPLIER
+            end
+
+            doReps(repSpeed)
+
+            if tick() - lastProteinEggTime >= PROTEIN_EGG_INTERVAL then
+                eatProteinEgg()
+                lastProteinEggTime = tick()
+            end
+
+            if tick() % 5 < 1 then
+                hitRock()
+            end
         end
 
-        if tick() - lastProteinEggTime >= PROTEIN_EGG_INTERVAL then
-            eatProteinEgg()
-            lastProteinEggTime = tick()
-        end
-
-        if tick() - lastRockTime >= ROCK_INTERVAL then
-            hitRock()
-            lastRockTime = tick()
-        end
-
-        -- Sin delay alguno, para máxima velocidad posible
-        -- Poner task.wait(0) es casi lo mismo que no esperar.
-        task.wait(0)
+        task.wait(0.1) -- espera mÃ­nima para no saturar
     end
 end)

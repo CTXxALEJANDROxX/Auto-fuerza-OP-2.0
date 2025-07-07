@@ -8,7 +8,7 @@ local ROCK_NAME = "Rock5M"
 local PROTEIN_EGG_NAME = "ProteinEgg"
 local PROTEIN_EGG_INTERVAL = 30 * 60
 local REPS_PER_CYCLE = 10 -- Ideal para que no se congele
-local REP_DELAY = 0.000001 -- Muy rápido pero seguro
+local REP_DELAY = 0.0001 -- Muy rápido pero seguro
 local ROCK_INTERVAL = 5
 
 getgenv()._AutoRepFarmEnabled = not getgenv()._AutoRepFarmEnabled

@@ -1,39 +1,30 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local UserInputService = game:GetService("UserInputService")
 
--- Configuración optimizada
+-- ConfiguraciÃ³n
 local PET_NAME = "Swift Samurai"
 local ROCK_NAME = "Rock5M"
 local PROTEIN_EGG_NAME = "ProteinEgg"
+local BASE_REP_SPEED = 1000
+local SWIFT_SAMURAI_REP_SPEED = 2000
 local PROTEIN_EGG_INTERVAL = 30 * 60
-local REPS_PER_CYCLE = 20 -- Ideal para que no se congele
-local REP_DELAY = 0.00000001 -- Muy rápido pero seguro
-local ROCK_INTERVAL = 5
+local DOUBLE_REP_MULTIPLIER = 2 -- Multiplicador para el pase de doble repeticiÃ³n
 
-getgenv()._AutoRepFarmEnabled = not getgenv()._AutoRepFarmEnabled
-if not getgenv()._AutoRepFarmEnabled then
-    warn("[Auto Rep Farm] DESACTIVADO")
-    return
-else
-    warn("[Auto Rep Farm] ACTIVADO (OPTIMIZADO)")
-end
-
-local HumanoidRootPart = nil
+-- Variables de estado
 local hasSwiftSamurai = false
 local lastProteinEggTime = 0
-local lastRockTime = 0
+local isScriptEnabled = false
+local hasDoubleRepPass = true -- SimulaciÃ³n del pase de doble repeticiÃ³n (cambia a false si no lo tienes)
 
-local function updateCharacterRefs()
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    HumanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
-end
-
+-- Funciones de utilidad
 local function equipPet()
     hasSwiftSamurai = false
-    local petsFolder = LocalPlayer:FindFirstChild("petsFolder")
-    if petsFolder and petsFolder:FindFirstChild("Unique") then
-        for _, pet in pairs(petsFolder.Unique:GetChildren()) do
+    if LocalPlayer.petsFolder and LocalPlayer.petsFolder.Unique then
+        for _, pet in pairs(LocalPlayer.petsFolder.Unique:GetChildren()) do
             if pet.Name == PET_NAME then
                 ReplicatedStorage.rEvents.equipPetEvent:FireServer("equipPet", pet)
                 hasSwiftSamurai = true
@@ -44,7 +35,7 @@ local function equipPet()
 end
 
 local function eatProteinEgg()
-    if LocalPlayer:FindFirstChild("Backpack") then
+    if LocalPlayer.Backpack then
         for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
             if item.Name == PROTEIN_EGG_NAME then
                 ReplicatedStorage.rEvents.eatEvent:FireServer("eat", item)
@@ -56,35 +47,66 @@ end
 
 local function hitRock()
     local rock = workspace:FindFirstChild(ROCK_NAME)
-    if rock and HumanoidRootPart then
+    if rock then
         HumanoidRootPart.CFrame = rock.CFrame * CFrame.new(0, 0, -5)
         ReplicatedStorage.rEvents.hitEvent:FireServer("hit", rock)
     end
 end
 
--- Loop principal
-task.spawn(function()
-    updateCharacterRefs()
-    equipPet()
-    lastProteinEggTime = tick()
+-- GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MuscleScriptGUI"
+screenGui.Parent = LocalPlayer.PlayerGui
 
-    while getgenv()._AutoRepFarmEnabled do
-        if LocalPlayer:FindFirstChild("muscleEvent") then
-            for i = 1, REPS_PER_CYCLE do
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 100, 0, 30)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.BackgroundColor3 = Color3.new(0.4, 0.4, 0.4)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.Text = "Iniciar"
+toggleButton.Parent = screenGui
+
+-- Funciones de GUI
+local function toggleScript()
+    isScriptEnabled = not isScriptEnabled
+    if isScriptEnabled then
+        toggleButton.Text = "Detener"
+    else
+        toggleButton.Text = "Iniciar"
+    end
+end
+
+-- Eventos de GUI
+toggleButton.MouseButton1Click:Connect(toggleScript)
+
+-- Bucle principal
+task.spawn(function()
+    equipPet()
+
+    while true do
+        if isScriptEnabled then
+            local repSpeed = SWIFT_SAMURAI_REP_SPEED -- Siempre usa la velocidad del Swift Samurai
+
+            -- Aplicar el multiplicador de doble repeticiÃ³n si el pase estÃ¡ activo
+            if hasDoubleRepPass then
+                repSpeed = repSpeed * DOUBLE_REP_MULTIPLIER
+            end
+
+            for _ = 1, repSpeed do
                 LocalPlayer.muscleEvent:FireServer("rep")
+            end
+
+            if tick() - lastProteinEggTime >= PROTEIN_EGG_INTERVAL then
+                eatProteinEgg()
+                lastProteinEggTime = tick()
+            end
+
+            if tick() % 5 < 1 then
+                hitRock()
             end
         end
 
-        if tick() - lastProteinEggTime >= PROTEIN_EGG_INTERVAL then
-            eatProteinEgg()
-            lastProteinEggTime = tick()
-        end
-
-        if tick() - lastRockTime >= ROCK_INTERVAL then
-            hitRock()
-            lastRockTime = tick()
-        end
-
-        task.wait(REP_DELAY)
+        task.wait(0.0001)
     end
 end)

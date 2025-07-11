@@ -9,16 +9,18 @@ local UserInputService = game:GetService("UserInputService")
 local PET_NAME = "Swift Samurai"
 local ROCK_NAME = "Rock5M"
 local PROTEIN_EGG_NAME = "ProteinEgg"
-local BASE_REP_SPEED = 20
-local SWIFT_SAMURAI_REP_SPEED = 2000
+local BASE_REP_SPEED = 10
+local SWIFT_SAMURAI_REP_SPEED = 20
 local PROTEIN_EGG_INTERVAL = 30 * 60
 local DOUBLE_REP_MULTIPLIER = 2 -- Multiplicador para el pase de doble repetición
 
 -- Variables de estado
 local hasSwiftSamurai = false
 local lastProteinEggTime = 0
-local isScriptEnabled = false
 local hasDoubleRepPass = true -- Simulación del pase de doble repetición (cambia a false si no lo tienes)
+
+-- Variable global que controla si el script está activado o desactivado
+getgenv().isScriptEnabled = getgenv().isScriptEnabled or false  -- Usamos getgenv para persistir la variable entre ejecuciones
 
 -- Funciones de utilidad
 local function equipPet()
@@ -39,6 +41,7 @@ local function eatProteinEgg()
         for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
             if item.Name == PROTEIN_EGG_NAME then
                 ReplicatedStorage.rEvents.eatEvent:FireServer("eat", item)
+                lastProteinEggTime = tick() -- Actualizamos el tiempo de uso del huevo
                 break
             end
         end
@@ -58,16 +61,16 @@ task.spawn(function()
     equipPet()
 
     -- Toggle sin botón: Cambia el valor de `isScriptEnabled` al ejecutar
-    isScriptEnabled = not isScriptEnabled  -- Cambia el estado de activación
+    getgenv().isScriptEnabled = not getgenv().isScriptEnabled  -- Cambia el estado de activación
 
-    if isScriptEnabled then
+    if getgenv().isScriptEnabled then
         print("Script activado")
     else
         print("Script desactivado")
     end
 
     while true do
-        if isScriptEnabled then
+        if getgenv().isScriptEnabled then
             local repSpeed = SWIFT_SAMURAI_REP_SPEED -- Siempre usa la velocidad del Swift Samurai
 
             -- Aplicar el multiplicador de doble repetición si el pase está activo
@@ -81,7 +84,6 @@ task.spawn(function()
 
             if tick() - lastProteinEggTime >= PROTEIN_EGG_INTERVAL then
                 eatProteinEgg()
-                lastProteinEggTime = tick()
             end
 
             if tick() % 5 < 1 then
@@ -89,6 +91,6 @@ task.spawn(function()
             end
         end
 
-        task.wait(0.000001)
+        task.wait(0.001)  -- Reduzco el tiempo de espera para mayor frecuencia
     end
 end)

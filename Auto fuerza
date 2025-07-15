@@ -1,96 +1,37 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-local UserInputService = game:GetService("UserInputService")
+local a = game:GetService("ReplicatedStorage")
+local b = game:GetService("Players")
+local c = b.LocalPlayer
 
--- Configuración
-local PET_NAME = "Swift Samurai"
-local ROCK_NAME = "Rock5M"
-local PROTEIN_EGG_NAME = "ProteinEgg"
-local BASE_REP_SPEED = 8
-local SWIFT_SAMURAI_REP_SPEED = 20
-local PROTEIN_EGG_INTERVAL = 30 * 60
-local DOUBLE_REP_MULTIPLIER = 2 -- Multiplicador para el pase de doble repetición
-
--- Variables de estado
-local hasSwiftSamurai = false
-local lastProteinEggTime = 0
-local hasDoubleRepPass = true -- Simulación del pase de doble repetición (cambia a false si no lo tienes)
-
--- Variable global que controla si el script está activado o desactivado
-getgenv().isScriptEnabled = getgenv().isScriptEnabled or false  -- Usamos getgenv para persistir la variable entre ejecuciones
-
--- Funciones de utilidad
-local function equipPet()
-    hasSwiftSamurai = false
-    if LocalPlayer.petsFolder and LocalPlayer.petsFolder.Unique then
-        for _, pet in pairs(LocalPlayer.petsFolder.Unique:GetChildren()) do
-            if pet.Name == PET_NAME then
-                ReplicatedStorage.rEvents.equipPetEvent:FireServer("equipPet", pet)
-                hasSwiftSamurai = true
-                break
-            end
+local function equipSamurai()
+    for _, n in pairs(c.petsFolder.Unique:GetChildren()) do
+        if n.Name == "Swift Samurai" then
+            a.rEvents.equipPetEvent:FireServer("equipPet", n)
         end
     end
 end
 
-local function eatProteinEgg()
-    if LocalPlayer.Backpack then
-        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if item.Name == PROTEIN_EGG_NAME then
-                ReplicatedStorage.rEvents.eatEvent:FireServer("eat", item)
-                lastProteinEggTime = tick() -- Actualizamos el tiempo de uso del huevo
-                break
+-- Configuração do "tiro"
+local totalReps = 1950 -- reps necessárias para 200B (ajustado)
+local threads = 10 -- Dividimos em 10 blocos
+local repsPerThread = math.floor(totalReps / threads)
+
+equipSamurai()
+
+-- Loop de tiros a cada 10 segundos
+while true do
+    local startTime = tick() -- Marca o tempo de início do ciclo
+    for i = 1, threads do
+        task.spawn(function()
+            for _ = 1, repsPerThread do
+                c.muscleEvent:FireServer("rep")
             end
-        end
+        end)
     end
+
+    -- Calcula o tempo decorrido e ajusta a espera
+    local elapsedTime = tick() - startTime
+    local waitTime = math.max(3 - elapsedTime, 0) -- Garante que o tempo de espera não seja negativo
+
+    print("Tiro de 200B disparado!")
+    task.wait(waitTime) -- Espera o tempo ajustado antes do próximo tiro
 end
-
-local function hitRock()
-    local rock = workspace:FindFirstChild(ROCK_NAME)
-    if rock then
-        HumanoidRootPart.CFrame = rock.CFrame * CFrame.new(0, 0, -5)
-        ReplicatedStorage.rEvents.hitEvent:FireServer("hit", rock)
-    end
-end
-
--- Bucle principal
-task.spawn(function()
-    equipPet()
-
-    -- Toggle sin botón: Cambia el valor de `isScriptEnabled` al ejecutar
-    getgenv().isScriptEnabled = not getgenv().isScriptEnabled  -- Cambia el estado de activación
-
-    if getgenv().isScriptEnabled then
-        print("Script activado")
-    else
-        print("Script desactivado")
-    end
-
-    while true do
-        if getgenv().isScriptEnabled then
-            local repSpeed = SWIFT_SAMURAI_REP_SPEED -- Siempre usa la velocidad del Swift Samurai
-
-            -- Aplicar el multiplicador de doble repetición si el pase está activo
-            if hasDoubleRepPass then
-                repSpeed = repSpeed * DOUBLE_REP_MULTIPLIER
-            end
-
-            for _ = 1, repSpeed do
-                LocalPlayer.muscleEvent:FireServer("rep")
-            end
-
-            if tick() - lastProteinEggTime >= PROTEIN_EGG_INTERVAL then
-                eatProteinEgg()
-            end
-
-            if tick() % 5 < 1 then
-                hitRock()
-            end
-        end
-
-        task.wait(0.001)  -- Reduzco el tiempo de espera para mayor frecuencia
-    end
-end)

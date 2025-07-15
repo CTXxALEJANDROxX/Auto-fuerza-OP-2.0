@@ -11,7 +11,7 @@ local function equipSamurai()
 end
 
 -- Configuração do "tiro"
-local totalReps = 1900 -- reps necessárias para 200B (ajustado)
+local totalReps = 1930 -- reps necessárias para 200B (ajustado)
 local threads = 10 -- Dividimos em 10 blocos
 local repsPerThread = math.floor(totalReps / threads)
 
@@ -30,7 +30,7 @@ while true do
 
     -- Calcula o tempo decorrido e ajusta a espera
     local elapsedTime = tick() - startTime
-    local waitTime = math.max(3 - elapsedTime, 0) -- Garante que o tempo de espera não seja negativo
+    local waitTime = math.max(3.5 - elapsedTime, 0) -- Garante que o tempo de espera não seja negativo
 
     print("Tiro de 200B disparado!")
     task.wait(waitTime) -- Espera o tempo ajustado antes do próximo tiro

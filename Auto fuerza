@@ -11,7 +11,7 @@ local function equipSamurai()
 end
 
 -- Configuração do "tiro"
-local totalReps = 1250 -- reps necessárias para 200B (ajustado)
+local totalReps = 1300 -- reps necessárias para 200B (ajustado)
 local threads = 10 -- Dividimos em 10 blocos
 local repsPerThread = math.floor(totalReps / threads)
 
